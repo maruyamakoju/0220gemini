@@ -1,0 +1,41 @@
+name: genieguard-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-and-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e ".[dev]"
+
+      - name: Unit tests
+        run: |
+          python -m pytest -q
+
+      - name: Run GenieGuard pipeline gate
+        run: |
+          python run_demo.py --seed-count 50 --max-attempts 2 --out artifacts/ci_run --json --fail-on-soft-fail > result.json
+          cat result.json
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genieguard-artifacts
+          path: |
+            artifacts/ci_run
+            result.json
