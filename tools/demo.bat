@@ -2,7 +2,10 @@
 setlocal
 
 set OUT=artifacts\demo_latest
-if exist "%OUT%" rd /s /q "%OUT%"
+if exist "%OUT%" rd /s /q "%OUT%" >nul 2>nul
+if exist "%OUT%" (
+  echo [GenieGuard] Previous demo output appears locked. Continuing with overwrite mode.
+)
 
 python run_demo.py --seed-count 50 --max-attempts 2 --out "%OUT%" --open --fail-on-soft-fail
 set RC=%ERRORLEVEL%
