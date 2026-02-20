@@ -6,7 +6,6 @@ import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
-from zipfile import ZIP_DEFLATED, ZipFile
 
 from .io_utils import ensure_dir, write_json, write_ndjson, write_text
 from .models import AuditReport, GameLog, GameSpec
@@ -399,31 +398,3 @@ def write_run_artifacts(
         "patch": str(out_dir / "patch.selected.json"),
         "diff": str(out_dir / "patch.diff"),
     }
-
-
-def write_evidence_zip(out_dir: Path) -> Path:
-    zip_path = out_dir / "evidence.zip"
-    include_files = [
-        "report.html",
-        "result.json",
-        "summary.before_after.json",
-        "metrics.compare.json",
-        "patch.diff",
-        "patch.selected.json",
-        "audit.before.json",
-        "audit.after.json",
-        "spec.before.json",
-        "spec.after.json",
-    ]
-
-    with ZipFile(zip_path, mode="w", compression=ZIP_DEFLATED) as zf:
-        for name in include_files:
-            path = out_dir / name
-            if path.exists() and path.is_file():
-                zf.write(path, arcname=name)
-
-        evidence_dir = out_dir / "evidence"
-        if evidence_dir.exists():
-            for trace in sorted(evidence_dir.glob("*.trace.txt")):
-                zf.write(trace, arcname=str(Path("evidence") / trace.name))
-    return zip_path

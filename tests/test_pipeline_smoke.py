@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import zipfile
 from pathlib import Path
 
 from genieguard.demo_cases import resolve_demo_case
@@ -30,6 +31,10 @@ def test_pipeline_improves_default_spec(tmp_path: Path) -> None:
     assert (out_dir / "report.html").exists()
     assert (out_dir / "result.json").exists()
     assert (out_dir / "evidence.zip").exists()
+    with zipfile.ZipFile(out_dir / "evidence.zip", "r") as zf:
+        names = set(zf.namelist())
+        assert "manifest.json" in names
+        assert "result.json" in names
 
 
 def test_pipeline_short_circuit_pass_for_good_spec(tmp_path: Path) -> None:

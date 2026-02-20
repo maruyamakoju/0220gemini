@@ -20,6 +20,10 @@ It runs `Generate -> Self-Play Audit -> Auto Patch -> Regression Verify` with re
   - `exploit_dominance`
 - Rule-first patch synthesizer with optional Gemini selection/rationale
 - Regression gate with rollback-by-selection behavior
+- v0.2 boundary modules:
+  - `gate.py` (`GateSpec` as single source of gate logic)
+  - `results.py` (`PipelineResult` contract for stable `result.json`)
+  - `artifacts.py` (`ArtifactLayout` + `evidence.zip` manifest)
 - Demo artifacts:
   - before/after specs
   - before/after audits

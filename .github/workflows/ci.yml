@@ -86,6 +86,11 @@ jobs:
                   f"win_skew<={thresholds.get('win_skew_max', 0.10)}, "
                   f"exploit_dominance<={thresholds.get('exploit_dominance_max', 0.25)}"
               )
+              reasons = data.get("gate_reasons", {})
+              if reasons:
+                  lines.append("- Gate reasons:")
+                  for key, value in reasons.items():
+                      lines.append(f"  - `{key}`: {value}")
               lines.append("")
               lines.append("| Metric | Before | After |")
               lines.append("|---|---:|---:|")

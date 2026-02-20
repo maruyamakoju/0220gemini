@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .audit import build_audit_report
+from .gate import GateSpec, default_gate_spec
 from .models import AuditReport, GameLog, GameSpec, PatchProposal
 from .patcher import apply_patch
 from .selfplay import run_self_play
@@ -40,23 +41,16 @@ def gate_limits_ok(
     reproducible: bool,
     exploit_threshold: float = DEFAULT_EXPLOIT_THRESHOLD,
 ) -> bool:
-    return (
-        metrics.get("deadlock_rate", 1.0) <= 0.01
-        and metrics.get("win_skew", 1.0) <= 0.10
-        and metrics.get("exploit_dominance", 1.0) <= exploit_threshold
-        and reproducible
-    )
+    spec = default_gate_spec(exploit_threshold=exploit_threshold)
+    passed, _, _ = spec.evaluate(metrics)
+    return passed and reproducible
 
 
 def report_passes_gate(
     report: AuditReport,
     exploit_threshold: float = DEFAULT_EXPLOIT_THRESHOLD,
 ) -> bool:
-    return gate_limits_ok(
-        metrics=report.metrics,
-        reproducible=report.reproducible,
-        exploit_threshold=exploit_threshold,
-    )
+    return gate_limits_ok(metrics=report.metrics, reproducible=report.reproducible, exploit_threshold=exploit_threshold)
 
 
 def _gate_score(metrics: dict[str, float]) -> float:
@@ -67,24 +61,8 @@ def _gate_score(metrics: dict[str, float]) -> float:
     )
 
 
-def _is_improved(before: AuditReport, after: AuditReport) -> bool:
-    b = before.metrics
-    a = after.metrics
-    thresholds = {
-        "deadlock_rate": 0.01,
-        "win_skew": 0.10,
-        "exploit_dominance": DEFAULT_EXPLOIT_THRESHOLD,
-    }
-
-    failing_before = [k for k, t in thresholds.items() if b.get(k, 1.0) > t]
-    if not failing_before:
-        return _gate_score(a) <= _gate_score(b)
-
-    # Every metric that failed before must improve.
-    for key in failing_before:
-        if a.get(key, 1.0) >= b.get(key, 1.0):
-            return False
-    return True
+def _is_improved(before: AuditReport, after: AuditReport, gate_spec: GateSpec) -> tuple[bool, dict[str, str]]:
+    return gate_spec.improvement_ok(before.metrics, after.metrics)
 
 
 def run_regression_gate(
@@ -95,7 +73,9 @@ def run_regression_gate(
     candidates: list[PatchProposal],
     max_attempts: int = 2,
     exploit_threshold: float = DEFAULT_EXPLOIT_THRESHOLD,
+    gate_spec: GateSpec | None = None,
 ) -> RegressionResult:
+    active_gate = gate_spec or default_gate_spec(exploit_threshold=exploit_threshold)
     attempts: list[dict[str, Any]] = []
     best_candidate: PatchProposal | None = None
     best_spec: GameSpec | None = None
@@ -110,12 +90,9 @@ def run_regression_gate(
         after_report.reproducible = check_reproducible(patched_spec, seeds, policy_names)
 
         metrics = after_report.metrics
-        gate_ok = gate_limits_ok(
-            metrics=metrics,
-            reproducible=after_report.reproducible,
-            exploit_threshold=exploit_threshold,
-        )
-        improved = _is_improved(before_report, after_report)
+        gate_ok_raw, _, gate_reasons = active_gate.evaluate(metrics)
+        gate_ok = gate_ok_raw and after_report.reproducible
+        improved, improvement_reasons = _is_improved(before_report, after_report, active_gate)
         passed = gate_ok and improved
 
         attempts.append(
@@ -125,7 +102,9 @@ def run_regression_gate(
                 "metrics_after": metrics,
                 "reproducible": after_report.reproducible,
                 "gate_limits_ok": gate_ok,
+                "gate_reasons": gate_reasons,
                 "improved_vs_before": improved,
+                "improvement_reasons": improvement_reasons,
                 "passed": passed,
             }
         )
