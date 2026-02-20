@@ -5,9 +5,8 @@ on:
   pull_request:
 
 jobs:
-  test-and-gate:
+  unit-tests:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,12 +25,34 @@ jobs:
         run: |
           python -m pytest -q
 
+  gate-matrix:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        demo_case: [ctf10, ctf_bias, ctf_exploit]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e ".[dev]"
+
       - name: Run GenieGuard pipeline gate
         id: run_pipeline
         continue-on-error: true
         run: |
-          python run_demo.py --demo-case ctf10 --max-attempts 2 --out artifacts/ci_run --json --fail-on-soft-fail > result.json
-          cat result.json
+          python run_demo.py --demo-case ${{ matrix.demo_case }} --max-attempts 2 --out artifacts/ci_run_${{ matrix.demo_case }} --json --fail-on-soft-fail > result_${{ matrix.demo_case }}.json
+          cat result_${{ matrix.demo_case }}.json
 
       - name: CI summary
         if: always()
@@ -41,37 +62,39 @@ jobs:
           import os
           from pathlib import Path
 
-          result_path = Path("result.json")
+          case_name = "${{ matrix.demo_case }}"
+          result_path = Path(f"result_{case_name}.json")
+
           lines = []
-          lines.append("## GenieGuard CI Summary")
+          lines.append(f"## GenieGuard CI Summary ({case_name})")
           lines.append("")
 
           if not result_path.exists():
-              lines.append("- Result: unavailable (`result.json` missing)")
+              lines.append("- Result: unavailable")
           else:
               data = json.loads(result_path.read_text(encoding="utf-8"))
               passed = bool(data.get("gate_passed"))
               lines.append(f"- Gate: `{'PASS' if passed else 'SOFT-FAIL'}`")
+              lines.append(
+                  f"- before_gate_passed={data.get('before_gate_passed')} / after_gate_passed={data.get('after_gate_passed')}"
+              )
 
               thresholds = data.get("gate_thresholds", {})
-              deadlock_max = thresholds.get("deadlock_rate_max", 0.01)
-              win_skew_max = thresholds.get("win_skew_max", 0.10)
-              exploit_max = thresholds.get("exploit_dominance_max", 0.25)
               lines.append(
-                  f"- Thresholds: deadlock_rate<={deadlock_max}, win_skew<={win_skew_max}, exploit_dominance<={exploit_max}"
+                  "- Thresholds: "
+                  f"deadlock_rate<={thresholds.get('deadlock_rate_max', 0.01)}, "
+                  f"win_skew<={thresholds.get('win_skew_max', 0.10)}, "
+                  f"exploit_dominance<={thresholds.get('exploit_dominance_max', 0.25)}"
               )
               lines.append("")
               lines.append("| Metric | Before | After |")
               lines.append("|---|---:|---:|")
-
               before = data.get("before_metrics", {})
               after = data.get("after_metrics", {})
               for key in ("deadlock_rate", "win_skew", "exploit_dominance"):
-                  lines.append(
-                      f"| `{key}` | {before.get(key, 'n/a')} | {after.get(key, 'n/a')} |"
-                  )
+                  lines.append(f"| `{key}` | {before.get(key, 'n/a')} | {after.get(key, 'n/a')} |")
 
-              summary_path = Path("artifacts/ci_run/summary.before_after.json")
+              summary_path = Path(f"artifacts/ci_run_{case_name}/summary.before_after.json")
               if summary_path.exists():
                   summary = json.loads(summary_path.read_text(encoding="utf-8"))
                   worst = summary.get("worst_case_before", {})
@@ -94,7 +117,8 @@ jobs:
           python - << 'PY'
           import json
           from pathlib import Path
-          result_path = Path("result.json")
+          case_name = "${{ matrix.demo_case }}"
+          result_path = Path(f"result_{case_name}.json")
           if not result_path.exists():
               raise SystemExit(1)
           data = json.loads(result_path.read_text(encoding="utf-8"))
@@ -105,7 +129,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: genieguard-artifacts
+          name: genieguard-artifacts-${{ matrix.demo_case }}
           path: |
-            artifacts/ci_run
-            result.json
+            artifacts/ci_run_${{ matrix.demo_case }}
+            result_${{ matrix.demo_case }}.json

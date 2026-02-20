@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "name": "CTF10-BiasCase-Fixed",
+    "seed": 1337,
+    "version": "0.1"
+  },
+  "map": {
+    "w": 10,
+    "h": 10,
+    "walls": [],
+    "flags": {
+      "A": [7, 1],
+      "B": [3, 0]
+    }
+  },
+  "spawns": {
+    "A": [0, 0],
+    "B": [9, 9]
+  },
+  "rules": {
+    "max_turns": 60,
+    "win": "capture_flag"
+  },
+  "params": {
+    "move_cost": 1,
+    "capture_range": 0,
+    "deadlock_repeat": 120
+  }
+}

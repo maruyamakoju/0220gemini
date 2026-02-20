@@ -70,17 +70,21 @@ def _gate_score(metrics: dict[str, float]) -> float:
 def _is_improved(before: AuditReport, after: AuditReport) -> bool:
     b = before.metrics
     a = after.metrics
-    not_worse = (
-        a.get("deadlock_rate", 1.0) <= b.get("deadlock_rate", 1.0)
-        and a.get("win_skew", 1.0) <= b.get("win_skew", 1.0)
-        and a.get("exploit_dominance", 1.0) <= b.get("exploit_dominance", 1.0)
-    )
-    strictly_better = (
-        a.get("deadlock_rate", 1.0) < b.get("deadlock_rate", 1.0)
-        or a.get("win_skew", 1.0) < b.get("win_skew", 1.0)
-        or a.get("exploit_dominance", 1.0) < b.get("exploit_dominance", 1.0)
-    )
-    return not_worse and strictly_better
+    thresholds = {
+        "deadlock_rate": 0.01,
+        "win_skew": 0.10,
+        "exploit_dominance": DEFAULT_EXPLOIT_THRESHOLD,
+    }
+
+    failing_before = [k for k, t in thresholds.items() if b.get(k, 1.0) > t]
+    if not failing_before:
+        return _gate_score(a) <= _gate_score(b)
+
+    # Every metric that failed before must improve.
+    for key in failing_before:
+        if a.get(key, 1.0) >= b.get(key, 1.0):
+            return False
+    return True
 
 
 def run_regression_gate(

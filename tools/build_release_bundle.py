@@ -46,6 +46,10 @@ def main() -> int:
     report_src = sample_out / "report.html"
     report_dst = dist / "report.sample.html"
     shutil.copy2(report_src, report_dst)
+    evidence_src = sample_out / "evidence.zip"
+    evidence_dst = dist / "evidence.sample.zip"
+    if evidence_src.exists():
+        shutil.copy2(evidence_src, evidence_dst)
 
     manifest = {
         "version": "v0.1.0",
@@ -57,6 +61,7 @@ def main() -> int:
             "paths": {
                 "report_sample_html": str(report_dst.relative_to(ROOT)),
                 "demo_case_zip": str(zip_path.relative_to(ROOT)),
+                "evidence_sample_zip": str(evidence_dst.relative_to(ROOT)) if evidence_dst.exists() else "",
                 "sample_run_dir": str(sample_out.relative_to(ROOT)),
             },
         },
@@ -69,6 +74,8 @@ def main() -> int:
     print(f"Built release bundle at: {dist}")
     print(f"- {zip_path.relative_to(ROOT)}")
     print(f"- {report_dst.relative_to(ROOT)}")
+    if evidence_dst.exists():
+        print(f"- {evidence_dst.relative_to(ROOT)}")
     print(f"- {(dist / 'release_manifest.json').relative_to(ROOT)}")
     return 0
 

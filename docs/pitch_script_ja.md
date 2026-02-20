@@ -9,6 +9,7 @@
 ## 0:50-2:10 デモ
 「`tools/demo.bat` を実行します。1コマンドで `artifacts/demo_latest/report.html` が開きます。」
 「デモケースは固定 (`--demo-case ctf10`) なので、毎回同じ赤→緑が再現されます。」
+「加えて、GitHub Pagesで sample report を常時公開しているので、実行せずにブラウザで確認できます。」
 
 「最初に `deadlock_rate / win_skew / exploit_dominance` の before が赤になっていることを確認します。」
 

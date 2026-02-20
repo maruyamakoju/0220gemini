@@ -3,6 +3,10 @@
 GenieGuard is a pre-shipping CI loop for AI-generated game specs.
 It runs `Generate -> Self-Play Audit -> Auto Patch -> Regression Verify` with reproducible evidence artifacts.
 
+## Quick Demo
+- Demo (Web): https://maruyamakoju.github.io/0220gemini/
+- Run locally (one command): `tools\demo.bat`
+
 ## What This Repo Implements
 - Deterministic 2D grid CTF simulator (`GameSpec + seed + policy -> identical result`)
 - Self-play matrix with 4 adversarial policies:
@@ -36,6 +40,13 @@ Run guaranteed fixed demo case (always red -> patch -> green):
 
 ```bash
 python run_demo.py --demo-case ctf10 --out artifacts/demo_latest --open --fail-on-soft-fail
+```
+
+Other fixed demo cases:
+
+```bash
+python run_demo.py --demo-case ctf_bias --out artifacts/demo_latest --fail-on-soft-fail
+python run_demo.py --demo-case ctf_exploit --out artifacts/demo_latest --fail-on-soft-fail
 ```
 
 Run and open the generated report automatically:
@@ -77,6 +88,10 @@ tools\demo.bat
 Fixed demo case files:
 - `examples/demo_case_ctf10/spec.before.json`
 - `examples/demo_case_ctf10/seeds.json`
+- `examples/demo_case_ctf_bias/spec.before.json`
+- `examples/demo_case_ctf_bias/seeds.json`
+- `examples/demo_case_ctf_exploit/spec.before.json`
+- `examples/demo_case_ctf_exploit/seeds.json`
 - Demo outputs are written under `artifacts/demo_latest/run_*` and the latest path is stored in `artifacts/demo_latest/LATEST_RUN.txt`.
 
 ## Optional Gemini Integration
@@ -112,6 +127,8 @@ Main files:
 - `logs.after.ndjson`
 - `evidence/*.trace.txt`
 - `report.html`
+- `result.json`
+- `evidence.zip`
 
 For one-click demo script output:
 - `artifacts/demo_latest/`
@@ -129,9 +146,15 @@ GitHub Actions workflow is included at `.github/workflows/ci.yml`.
 
 On each push/PR it runs:
 1. Unit tests (`pytest`)
-2. GenieGuard gate run (`run_demo.py --demo-case ctf10 --fail-on-soft-fail`)
-3. Job Summary output (`before/after + worst case`)
-4. Artifact upload (`report.html`, traces, diffs, metrics)
+2. GenieGuard gate matrix (`ctf10`, `ctf_bias`, `ctf_exploit`)
+3. Job Summary output (`PASS/FAIL + before/after + worst case`)
+4. Artifact upload for each case (`report.html`, traces, diffs, metrics, result.json)
+
+GitHub Pages workflow (`.github/workflows/pages.yml`) publishes:
+- `report.sample.html`
+- `demo_case_ctf10.zip`
+- `evidence.sample.zip`
+- `release_manifest.json`
 
 ## Release Bundle
 Build distributable assets:
@@ -143,6 +166,7 @@ python tools/build_release_bundle.py
 Generated in `dist/`:
 - `demo_case_ctf10.zip`
 - `report.sample.html`
+- `evidence.sample.zip`
 - `release_manifest.json`
 
 Create and publish a GitHub release (Windows):

@@ -147,6 +147,7 @@ AI生成ゲーム仕様を自己対戦で壊し、差分パッチを提案し、
 - `examples/demo_case_ctf10/spec.before.json`
 - `examples/demo_case_ctf10/seeds.json`
 - 実行: `python run_demo.py --demo-case ctf10 --out artifacts/demo_latest --open --fail-on-soft-fail`
+- 追加ケース: `ctf_bias`, `ctf_exploit`
 
 ## 11. Gemini統合（プロンプト設計）
 ### 11.1 SpecGen
@@ -206,6 +207,8 @@ AI生成ゲーム仕様を自己対戦で壊し、差分パッチを提案し、
 - デモ安定化: 事前に固定seedセットで撮影
 - CI整合: 既に基準を満たすSpecを誤って落とさない（short-circuit PASS）
 - デモ確実性: 固定デモケースを使い、必ず Before赤 -> After緑 を再現
+- CI網羅性: 複数固定ケースを matrix で回し、1ケースでも落ちたら fail
+- 配布性: `evidence.zip` 1ファイルでレビュー可能
 
 ## 15. 将来拡張
 - RL接続: "将来、方策探索器を学習器に置換可能"

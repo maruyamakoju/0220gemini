@@ -1,0 +1,83 @@
+name: pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: |
+          python -m pip install -U pip
+          python -m pip install -e ".[dev]"
+
+      - name: Build release bundle
+        run: |
+          python tools/build_release_bundle.py
+          mkdir -p site
+          cp dist/report.sample.html site/report.sample.html
+          cp dist/release_manifest.json site/release_manifest.json
+          cp dist/demo_case_ctf10.zip site/demo_case_ctf10.zip
+          cp dist/evidence.sample.zip site/evidence.sample.zip
+          cat > site/index.html << 'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>GenieGuard Demo</title>
+            <style>
+              body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f4f8f6; color: #132; }
+              .wrap { max-width: 1080px; margin: 24px auto; padding: 0 12px; }
+              .links a { margin-right: 12px; }
+              iframe { width: 100%; height: 78vh; border: 1px solid #c8d6ce; border-radius: 10px; background: #fff; }
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <h1>GenieGuard Demo (Sample Report)</h1>
+              <div class="links">
+                <a href="report.sample.html">Open report.sample.html</a>
+                <a href="demo_case_ctf10.zip">Download demo_case_ctf10.zip</a>
+                <a href="evidence.sample.zip">Download evidence.sample.zip</a>
+                <a href="release_manifest.json">Open release_manifest.json</a>
+              </div>
+              <iframe src="report.sample.html" title="GenieGuard sample report"></iframe>
+            </div>
+          </body>
+          </html>
+          HTML
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

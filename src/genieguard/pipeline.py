@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .audit import build_audit_report
-from .io_utils import read_json
+from .io_utils import read_json, write_json
 from .models import GameSpec, PatchProposal
 from .patcher import suggest_patch_candidates
 from .policies import default_policy_names
@@ -18,7 +18,7 @@ from .regression import (
     report_passes_gate,
     run_regression_gate,
 )
-from .reporting import write_run_artifacts
+from .reporting import write_evidence_zip, write_run_artifacts
 from .selfplay import run_self_play
 from .spec_gen import generate_gamespec
 
@@ -131,7 +131,7 @@ def run_pipeline(config: PipelineConfig) -> dict[str, Any]:
         write_html=config.write_html,
     )
 
-    return {
+    result = {
         "gate_passed": regression.passed,
         "seeds": seeds,
         "policy_names": policy_names,
@@ -148,3 +148,10 @@ def run_pipeline(config: PipelineConfig) -> dict[str, Any]:
         "attempts": regression.attempts,
         "paths": paths,
     }
+    result_path = out_dir / "result.json"
+    write_json(result_path, result)
+    evidence_zip_path = write_evidence_zip(out_dir)
+    result["paths"]["result"] = str(result_path)
+    result["paths"]["evidence_zip"] = str(evidence_zip_path)
+    write_json(result_path, result)
+    return result

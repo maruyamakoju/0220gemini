@@ -46,17 +46,19 @@ def main(argv: list[str] | None = None) -> int:
     seeds_path = args.seeds
     out_dir = args.out
     prompt = args.prompt
+    case_policy_names: list[str] | None = None
     if args.demo_case is not None:
-        case_spec, case_seeds = resolve_demo_case(args.demo_case)
+        case = resolve_demo_case(args.demo_case)
         if spec_path is None:
-            spec_path = case_spec
+            spec_path = case.spec_path
         if seeds_path is None:
-            seeds_path = case_seeds
+            seeds_path = case.seeds_path
         if out_dir is None:
             out_dir = Path("artifacts") / "demo_latest"
+        case_policy_names = case.policy_names
         prompt = f"Fixed demo case: {args.demo_case}"
 
-    policies = [x.strip() for x in args.policies.split(",") if x.strip()] or None
+    policies = [x.strip() for x in args.policies.split(",") if x.strip()] or case_policy_names
     config = PipelineConfig(
         prompt=prompt,
         seed=args.seed,

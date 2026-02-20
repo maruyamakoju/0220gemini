@@ -13,7 +13,7 @@ if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
 git push origin %TAG%
 if not "%ERRORLEVEL%"=="0" exit /b %ERRORLEVEL%
 
-gh release create %TAG% dist/demo_case_ctf10.zip dist/report.sample.html dist/release_manifest.json ^
+gh release create %TAG% dist/demo_case_ctf10.zip dist/report.sample.html dist/evidence.sample.zip dist/release_manifest.json ^
   --title "GenieGuard %TAG%" ^
   --notes "GenieGuard release bundle: fixed demo case + sample report + manifest."
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from genieguard.demo_cases import resolve_demo_case
 from genieguard.models import PatchProposal
 from genieguard.patcher import apply_patch
 from genieguard.pipeline import PipelineConfig, run_pipeline
@@ -27,6 +28,8 @@ def test_pipeline_improves_default_spec(tmp_path: Path) -> None:
     assert after["deadlock_rate"] <= before["deadlock_rate"]
     assert after["win_skew"] <= before["win_skew"]
     assert (out_dir / "report.html").exists()
+    assert (out_dir / "result.json").exists()
+    assert (out_dir / "evidence.zip").exists()
 
 
 def test_pipeline_short_circuit_pass_for_good_spec(tmp_path: Path) -> None:
@@ -62,16 +65,17 @@ def test_pipeline_short_circuit_pass_for_good_spec(tmp_path: Path) -> None:
     assert result["attempts"][0]["short_circuit"] is True
 
 
-def test_fixed_demo_case_is_red_to_green(tmp_path: Path) -> None:
+def _assert_demo_case_red_to_green(tmp_path: Path, case_name: str) -> None:
+    case = resolve_demo_case(case_name)
     result = run_pipeline(
         PipelineConfig(
-            spec_path=Path("examples/demo_case_ctf10/spec.before.json"),
-            seeds_path=Path("examples/demo_case_ctf10/seeds.json"),
-            out_dir=tmp_path / "demo_case",
+            spec_path=case.spec_path,
+            seeds_path=case.seeds_path,
+            out_dir=tmp_path / case_name,
             max_attempts=2,
+            policy_names=case.policy_names,
         )
     )
-
     before = result["before_metrics"]
     after = result["after_metrics"]
 
@@ -86,3 +90,15 @@ def test_fixed_demo_case_is_red_to_green(tmp_path: Path) -> None:
     assert after["deadlock_rate"] <= 0.01
     assert after["win_skew"] <= 0.10
     assert after["exploit_dominance"] <= 0.25
+
+
+def test_fixed_demo_case_is_red_to_green(tmp_path: Path) -> None:
+    _assert_demo_case_red_to_green(tmp_path, "ctf10")
+
+
+def test_bias_demo_case_is_red_to_green(tmp_path: Path) -> None:
+    _assert_demo_case_red_to_green(tmp_path, "ctf_bias")
+
+
+def test_exploit_demo_case_is_red_to_green(tmp_path: Path) -> None:
+    _assert_demo_case_red_to_green(tmp_path, "ctf_exploit")
