@@ -60,3 +60,29 @@ def test_pipeline_short_circuit_pass_for_good_spec(tmp_path: Path) -> None:
     assert result["gate_passed"] is True
     assert result["selected_patch"]["patch_ops"] == []
     assert result["attempts"][0]["short_circuit"] is True
+
+
+def test_fixed_demo_case_is_red_to_green(tmp_path: Path) -> None:
+    result = run_pipeline(
+        PipelineConfig(
+            spec_path=Path("examples/demo_case_ctf10/spec.before.json"),
+            seeds_path=Path("examples/demo_case_ctf10/seeds.json"),
+            out_dir=tmp_path / "demo_case",
+            max_attempts=2,
+        )
+    )
+
+    before = result["before_metrics"]
+    after = result["after_metrics"]
+
+    before_is_red = (
+        before["deadlock_rate"] > 0.01
+        or before["win_skew"] > 0.10
+        or before["exploit_dominance"] > 0.25
+    )
+    assert before_is_red is True
+    assert result["gate_passed"] is True
+    assert result["selected_patch"]["patch_ops"] != []
+    assert after["deadlock_rate"] <= 0.01
+    assert after["win_skew"] <= 0.10
+    assert after["exploit_dominance"] <= 0.25

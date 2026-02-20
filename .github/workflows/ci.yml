@@ -27,9 +27,79 @@ jobs:
           python -m pytest -q
 
       - name: Run GenieGuard pipeline gate
+        id: run_pipeline
+        continue-on-error: true
         run: |
-          python run_demo.py --seed-count 50 --max-attempts 2 --out artifacts/ci_run --json --fail-on-soft-fail > result.json
+          python run_demo.py --demo-case ctf10 --max-attempts 2 --out artifacts/ci_run --json --fail-on-soft-fail > result.json
           cat result.json
+
+      - name: CI summary
+        if: always()
+        run: |
+          python - << 'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result_path = Path("result.json")
+          lines = []
+          lines.append("## GenieGuard CI Summary")
+          lines.append("")
+
+          if not result_path.exists():
+              lines.append("- Result: unavailable (`result.json` missing)")
+          else:
+              data = json.loads(result_path.read_text(encoding="utf-8"))
+              passed = bool(data.get("gate_passed"))
+              lines.append(f"- Gate: `{'PASS' if passed else 'SOFT-FAIL'}`")
+
+              thresholds = data.get("gate_thresholds", {})
+              deadlock_max = thresholds.get("deadlock_rate_max", 0.01)
+              win_skew_max = thresholds.get("win_skew_max", 0.10)
+              exploit_max = thresholds.get("exploit_dominance_max", 0.25)
+              lines.append(
+                  f"- Thresholds: deadlock_rate<={deadlock_max}, win_skew<={win_skew_max}, exploit_dominance<={exploit_max}"
+              )
+              lines.append("")
+              lines.append("| Metric | Before | After |")
+              lines.append("|---|---:|---:|")
+
+              before = data.get("before_metrics", {})
+              after = data.get("after_metrics", {})
+              for key in ("deadlock_rate", "win_skew", "exploit_dominance"):
+                  lines.append(
+                      f"| `{key}` | {before.get(key, 'n/a')} | {after.get(key, 'n/a')} |"
+                  )
+
+              summary_path = Path("artifacts/ci_run/summary.before_after.json")
+              if summary_path.exists():
+                  summary = json.loads(summary_path.read_text(encoding="utf-8"))
+                  worst = summary.get("worst_case_before", {})
+                  if worst:
+                      lines.append("")
+                      lines.append(
+                          "- Worst(before): "
+                          f"seed={worst.get('seed')}, "
+                          f"policies={worst.get('policy_a')} vs {worst.get('policy_b')}, "
+                          f"reason={worst.get('terminal_reason')}, turns={worst.get('turns')}"
+                      )
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Enforce gate result
+        if: always()
+        run: |
+          python - << 'PY'
+          import json
+          from pathlib import Path
+          result_path = Path("result.json")
+          if not result_path.exists():
+              raise SystemExit(1)
+          data = json.loads(result_path.read_text(encoding="utf-8"))
+          raise SystemExit(0 if data.get("gate_passed") else 1)
+          PY
 
       - name: Upload artifacts
         if: always()

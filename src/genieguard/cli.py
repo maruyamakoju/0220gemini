@@ -5,13 +5,22 @@ import json
 import webbrowser
 from pathlib import Path
 
+from .demo_cases import available_demo_cases, resolve_demo_case
 from .pipeline import PipelineConfig, run_pipeline
 
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="GenieGuard v0.1 pipeline")
     p.add_argument("--prompt", type=str, default="Generate a CTF game spec with possible balancing risks.")
+    p.add_argument(
+        "--demo-case",
+        type=str,
+        choices=available_demo_cases(),
+        default=None,
+        help="Run fixed reproducible demo case (guaranteed red -> green).",
+    )
     p.add_argument("--spec", type=Path, default=None, help="Existing GameSpec JSON path.")
+    p.add_argument("--seeds", type=Path, default=None, help="Seed list JSON path (list[int] or {seeds:[...]}).")
     p.add_argument("--out", type=Path, default=None, help="Artifact output directory.")
     p.add_argument("--seed", type=int, default=1337)
     p.add_argument("--seed-count", type=int, default=50)
@@ -33,13 +42,28 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
+    spec_path = args.spec
+    seeds_path = args.seeds
+    out_dir = args.out
+    prompt = args.prompt
+    if args.demo_case is not None:
+        case_spec, case_seeds = resolve_demo_case(args.demo_case)
+        if spec_path is None:
+            spec_path = case_spec
+        if seeds_path is None:
+            seeds_path = case_seeds
+        if out_dir is None:
+            out_dir = Path("artifacts") / "demo_latest"
+        prompt = f"Fixed demo case: {args.demo_case}"
+
     policies = [x.strip() for x in args.policies.split(",") if x.strip()] or None
     config = PipelineConfig(
-        prompt=args.prompt,
+        prompt=prompt,
         seed=args.seed,
         seed_count=args.seed_count,
-        spec_path=args.spec,
-        out_dir=args.out,
+        seeds_path=seeds_path,
+        spec_path=spec_path,
+        out_dir=out_dir,
         policy_names=policies,
         use_gemini=args.use_gemini,
         max_attempts=args.max_attempts,

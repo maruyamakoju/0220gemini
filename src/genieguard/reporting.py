@@ -267,6 +267,7 @@ def _render_html(
       <div>Prompt: {_html_escape(prompt)}</div>
       <div>Regression Gate: <span class="status">{status}</span></div>
       <div class="muted">Metrics: deadlock_rate / win_skew / exploit_dominance</div>
+      <div class="muted">Thresholds: deadlock_rate &lt;= 0.01, win_skew &lt;= 0.10, exploit_dominance &lt;= 0.25</div>
     </div>
     <div class="grid">
       <section class="card">

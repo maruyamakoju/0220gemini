@@ -32,6 +32,12 @@ Run full pipeline:
 python run_demo.py --seed-count 50 --max-attempts 2
 ```
 
+Run guaranteed fixed demo case (always red -> patch -> green):
+
+```bash
+python run_demo.py --demo-case ctf10 --out artifacts/demo_latest --open --fail-on-soft-fail
+```
+
 Run and open the generated report automatically:
 
 ```bash
@@ -50,6 +56,12 @@ Use your own spec:
 python run_demo.py --spec path/to/spec.json --seed-count 50
 ```
 
+Use your own spec with fixed seed set:
+
+```bash
+python run_demo.py --spec path/to/spec.json --seeds path/to/seeds.json
+```
+
 Fail command (non-zero exit) on `SOFT-FAIL`:
 
 ```bash
@@ -61,6 +73,11 @@ Windows one-click demo:
 ```bash
 tools\demo.bat
 ```
+
+Fixed demo case files:
+- `examples/demo_case_ctf10/spec.before.json`
+- `examples/demo_case_ctf10/seeds.json`
+- Demo outputs are written under `artifacts/demo_latest/run_*` and the latest path is stored in `artifacts/demo_latest/LATEST_RUN.txt`.
 
 ## Optional Gemini Integration
 Set environment variables:
@@ -112,8 +129,27 @@ GitHub Actions workflow is included at `.github/workflows/ci.yml`.
 
 On each push/PR it runs:
 1. Unit tests (`pytest`)
-2. GenieGuard gate run (`run_demo.py --fail-on-soft-fail`)
-3. Artifact upload (`report.html`, traces, diffs, metrics)
+2. GenieGuard gate run (`run_demo.py --demo-case ctf10 --fail-on-soft-fail`)
+3. Job Summary output (`before/after + worst case`)
+4. Artifact upload (`report.html`, traces, diffs, metrics)
+
+## Release Bundle
+Build distributable assets:
+
+```bash
+python tools/build_release_bundle.py
+```
+
+Generated in `dist/`:
+- `demo_case_ctf10.zip`
+- `report.sample.html`
+- `release_manifest.json`
+
+Create and publish a GitHub release (Windows):
+
+```bash
+tools\release.bat v0.1.0
+```
 
 ## Project Layout
 ```

@@ -1,13 +1,11 @@
 @echo off
 setlocal
 
-set OUT=artifacts\demo_latest
-if exist "%OUT%" rd /s /q "%OUT%" >nul 2>nul
-if exist "%OUT%" (
-  echo [GenieGuard] Previous demo output appears locked. Continuing with overwrite mode.
-)
+set ROOT=artifacts\demo_latest
+if not exist "%ROOT%" mkdir "%ROOT%"
+set RUN=%ROOT%\run_%RANDOM%_%RANDOM%
 
-python run_demo.py --seed-count 50 --max-attempts 2 --out "%OUT%" --open --fail-on-soft-fail
+python run_demo.py --demo-case ctf10 --max-attempts 2 --out "%RUN%" --fail-on-soft-fail
 set RC=%ERRORLEVEL%
 
 if not "%RC%"=="0" (
@@ -15,5 +13,7 @@ if not "%RC%"=="0" (
   exit /b %RC%
 )
 
-echo [GenieGuard] Demo completed: %OUT%\report.html
+echo %RUN% > "%ROOT%\LATEST_RUN.txt"
+start "" "%RUN%\report.html" >nul 2>nul
+echo [GenieGuard] Demo completed: %RUN%\report.html
 endlocal

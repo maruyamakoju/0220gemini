@@ -11,8 +11,10 @@ from .models import GameSpec, PatchProposal
 from .patcher import suggest_patch_candidates
 from .policies import default_policy_names
 from .regression import (
+    DEFAULT_EXPLOIT_THRESHOLD,
     RegressionResult,
     check_reproducible,
+    gate_limits_ok,
     report_passes_gate,
     run_regression_gate,
 )
@@ -26,6 +28,7 @@ class PipelineConfig:
     prompt: str = "Generate a 2D CTF map that might have balancing risks."
     seed: int = 1337
     seed_count: int = 50
+    seeds_path: Path | None = None
     spec_path: Path | None = None
     out_dir: Path | None = None
     policy_names: list[str] | None = None
@@ -38,6 +41,19 @@ def _seed_set(base_seed: int, n: int) -> list[int]:
     return [base_seed + i * 17 for i in range(n)]
 
 
+def _load_seeds(path: Path) -> list[int]:
+    payload = read_json(path)
+    raw = payload
+    if isinstance(payload, dict):
+        raw = payload.get("seeds")
+    if not isinstance(raw, list):
+        raise ValueError(f"Invalid seeds payload in {path}")
+    seeds = [int(x) for x in raw]
+    if not seeds:
+        raise ValueError(f"Seeds list is empty in {path}")
+    return seeds
+
+
 def _load_or_generate_spec(config: PipelineConfig) -> GameSpec:
     if config.spec_path is not None:
         data = read_json(config.spec_path)
@@ -47,14 +63,15 @@ def _load_or_generate_spec(config: PipelineConfig) -> GameSpec:
 
 def run_pipeline(config: PipelineConfig) -> dict[str, Any]:
     policy_names = config.policy_names or default_policy_names()
-    seeds = _seed_set(config.seed, config.seed_count)
+    seeds = _load_seeds(config.seeds_path) if config.seeds_path is not None else _seed_set(config.seed, config.seed_count)
     spec = _load_or_generate_spec(config)
 
     logs_before = run_self_play(spec=spec, seeds=seeds, policy_names=policy_names)
     report_before = build_audit_report(logs_before)
     report_before.reproducible = check_reproducible(spec, seeds, policy_names)
+    before_gate_ok = report_passes_gate(report_before)
 
-    if report_passes_gate(report_before):
+    if before_gate_ok:
         no_patch = PatchProposal(
             patch_ops=[],
             rationale="Spec already satisfies CI gate thresholds; patch not required.",
@@ -93,6 +110,11 @@ def run_pipeline(config: PipelineConfig) -> dict[str, Any]:
             candidates=candidates,
             max_attempts=config.max_attempts,
         )
+    after_gate_ok = gate_limits_ok(
+        metrics=regression.after_report.metrics,
+        reproducible=regression.after_report.reproducible,
+        exploit_threshold=DEFAULT_EXPLOIT_THRESHOLD,
+    )
 
     out_dir = config.out_dir
     if out_dir is None:
@@ -115,6 +137,13 @@ def run_pipeline(config: PipelineConfig) -> dict[str, Any]:
         "policy_names": policy_names,
         "before_metrics": report_before.metrics,
         "after_metrics": regression.after_report.metrics,
+        "before_gate_passed": before_gate_ok,
+        "after_gate_passed": after_gate_ok,
+        "gate_thresholds": {
+            "deadlock_rate_max": 0.01,
+            "win_skew_max": 0.10,
+            "exploit_dominance_max": DEFAULT_EXPLOIT_THRESHOLD,
+        },
         "selected_patch": regression.selected_patch.to_dict(),
         "attempts": regression.attempts,
         "paths": paths,

@@ -141,6 +141,12 @@ AI生成ゲーム仕様を自己対戦で壊し、差分パッチを提案し、
 - terminal_reason 内訳
 - policy win-rate table
 - worst case top1 の seed/trace
+- Gate閾値（deadlock_rate<=0.01 / win_skew<=0.10 / exploit_dominance<=0.25）
+
+固定デモケース:
+- `examples/demo_case_ctf10/spec.before.json`
+- `examples/demo_case_ctf10/seeds.json`
+- 実行: `python run_demo.py --demo-case ctf10 --out artifacts/demo_latest --open --fail-on-soft-fail`
 
 ## 11. Gemini統合（プロンプト設計）
 ### 11.1 SpecGen
@@ -199,6 +205,7 @@ AI生成ゲーム仕様を自己対戦で壊し、差分パッチを提案し、
 - 差分提示: 全置換ではなく patch_ops
 - デモ安定化: 事前に固定seedセットで撮影
 - CI整合: 既に基準を満たすSpecを誤って落とさない（short-circuit PASS）
+- デモ確実性: 固定デモケースを使い、必ず Before赤 -> After緑 を再現
 
 ## 15. 将来拡張
 - RL接続: "将来、方策探索器を学習器に置換可能"
