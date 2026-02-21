@@ -43,7 +43,7 @@ jobs:
           <head>
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>GenieGuard Demo</title>
+            <title>GenieGuard v0.2 Demo</title>
             <style>
               body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f4f8f6; color: #132; }
               .wrap { max-width: 1080px; margin: 24px auto; padding: 0 12px; }
@@ -53,7 +53,7 @@ jobs:
           </head>
           <body>
             <div class="wrap">
-              <h1>GenieGuard Demo (Sample Report)</h1>
+              <h1>GenieGuard v0.2 Demo (Sample Report)</h1>
               <div class="links">
                 <a href="report.sample.html">Open report.sample.html</a>
                 <a href="demo_case_ctf10.zip">Download demo_case_ctf10.zip</a>

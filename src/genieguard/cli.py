@@ -6,11 +6,13 @@ import webbrowser
 from pathlib import Path
 
 from .demo_cases import available_demo_cases, resolve_demo_case
+from .evidence import verify_evidence_zip
 from .pipeline import PipelineConfig, run_pipeline
+from .runtime import get_genieguard_version
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="GenieGuard v0.1 pipeline")
+    p = argparse.ArgumentParser(description=f"GenieGuard v{get_genieguard_version()} pipeline")
     p.add_argument("--prompt", type=str, default="Generate a CTF game spec with possible balancing risks.")
     p.add_argument(
         "--demo-case",
@@ -29,6 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--use-gemini", action="store_true")
     p.add_argument("--no-html", action="store_true")
     p.add_argument("--open", action="store_true", help="Open report.html after run.")
+    p.add_argument("--verify-evidence", type=Path, default=None, help="Verify evidence.zip manifest integrity.")
     p.add_argument(
         "--fail-on-soft-fail",
         action="store_true",
@@ -41,6 +44,21 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.verify_evidence is not None:
+        verified = verify_evidence_zip(args.verify_evidence)
+        if args.json:
+            print(json.dumps(verified, ensure_ascii=False, indent=2))
+        else:
+            print(f"Evidence: {'PASS' if verified.get('ok') else 'FAIL'}")
+            print(f"Zip: {verified.get('zip_path')}")
+            print(f"Manifest version: {verified.get('manifest_version')}")
+            print(f"Files checked: {verified.get('file_count')}")
+            if verified.get("missing"):
+                print(f"Missing files: {verified['missing']}")
+            if verified.get("mismatched"):
+                print(f"Mismatched files: {[item.get('name') for item in verified['mismatched']]}")
+        return 0 if verified.get("ok") else 1
 
     spec_path = args.spec
     seeds_path = args.seeds

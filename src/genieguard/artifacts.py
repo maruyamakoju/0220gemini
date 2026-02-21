@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from .runtime import EVIDENCE_MANIFEST_VERSION
+
 
 @dataclass(frozen=True)
 class ArtifactLayout:
@@ -36,7 +38,11 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def write_evidence_zip(layout: ArtifactLayout, extra_files: list[Path] | None = None) -> Path:
+def write_evidence_zip(
+    layout: ArtifactLayout,
+    extra_files: list[Path] | None = None,
+    runtime_meta: dict[str, str] | None = None,
+) -> Path:
     include_names = [
         "report.html",
         "result.json",
@@ -49,7 +55,17 @@ def write_evidence_zip(layout: ArtifactLayout, extra_files: list[Path] | None = 
         "spec.before.json",
         "spec.after.json",
     ]
-    manifest: dict[str, list[dict[str, str]]] = {"files": []}
+    meta = runtime_meta or {}
+    manifest: dict[str, object] = {
+        "manifest_version": EVIDENCE_MANIFEST_VERSION,
+        "genieguard_version": meta.get("genieguard_version", "unknown"),
+        "git_sha": meta.get("git_sha", "unknown"),
+        "created_at": meta.get("created_at", ""),
+        "python_version": meta.get("python_version", ""),
+        "platform": meta.get("platform", ""),
+        "hash_algorithm": "sha256",
+        "files": [],
+    }
     zip_path = layout.evidence_zip
 
     with ZipFile(zip_path, mode="w", compression=ZIP_DEFLATED) as zf:
@@ -57,18 +73,24 @@ def write_evidence_zip(layout: ArtifactLayout, extra_files: list[Path] | None = 
             path = layout.out_dir / name
             if path.exists() and path.is_file():
                 zf.write(path, arcname=name)
-                manifest["files"].append({"name": name, "sha256": _sha256(path)})
+                files = manifest["files"]
+                if isinstance(files, list):
+                    files.append({"name": name, "sha256": _sha256(path)})
 
         if layout.evidence_dir.exists():
             for trace in sorted(layout.evidence_dir.glob("*.trace.txt")):
-                arc = str(Path("evidence") / trace.name)
+                arc = (Path("evidence") / trace.name).as_posix()
                 zf.write(trace, arcname=arc)
-                manifest["files"].append({"name": arc, "sha256": _sha256(trace)})
+                files = manifest["files"]
+                if isinstance(files, list):
+                    files.append({"name": arc, "sha256": _sha256(trace)})
 
         for path in extra_files or []:
             if path.exists() and path.is_file():
                 zf.write(path, arcname=path.name)
-                manifest["files"].append({"name": path.name, "sha256": _sha256(path)})
+                files = manifest["files"]
+                if isinstance(files, list):
+                    files.append({"name": path.name, "sha256": _sha256(path)})
 
         zf.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
 

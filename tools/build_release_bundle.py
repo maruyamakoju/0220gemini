@@ -12,6 +12,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from genieguard.pipeline import PipelineConfig, run_pipeline
+from genieguard.runtime import EVIDENCE_MANIFEST_VERSION, RESULT_SCHEMA_VERSION
 
 
 def _zip_demo_case(case_dir: Path, out_zip: Path) -> None:
@@ -51,10 +52,20 @@ def main() -> int:
     if evidence_src.exists():
         shutil.copy2(evidence_src, evidence_dst)
 
+    result_meta = result.get("meta", {})
+    gg_version = str(result_meta.get("genieguard_version", "unknown"))
     manifest = {
-        "version": "v0.1.0",
+        "bundle_version": f"v{gg_version}",
+        "result_schema_version": int(result.get("schema_version", RESULT_SCHEMA_VERSION)),
+        "evidence_manifest_version": EVIDENCE_MANIFEST_VERSION,
+        "genieguard_version": gg_version,
+        "git_sha": str(result_meta.get("git_sha", "unknown")),
+        "created_at": str(result_meta.get("created_at", "")),
+        "python_version": str(result_meta.get("python_version", "")),
+        "platform": str(result_meta.get("platform", "")),
         "result": {
             "gate_passed": result["gate_passed"],
+            "schema_version": result.get("schema_version", RESULT_SCHEMA_VERSION),
             "before_metrics": result["before_metrics"],
             "after_metrics": result["after_metrics"],
             "selected_patch": result["selected_patch"],

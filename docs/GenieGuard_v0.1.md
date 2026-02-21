@@ -1,5 +1,7 @@
 # GenieGuard 技術書 v0.1
 
+> Note: v0.2 の契約凍結（`schema_version=2`, `manifest_version=2`, 境界モジュール導入）は `docs/GenieGuard_v0.2.md` を参照してください。
+
 ## 目次
 1. コンセプトと勝ち筋
 2. 要件定義

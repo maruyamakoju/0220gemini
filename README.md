@@ -1,4 +1,4 @@
-# GenieGuard v0.1
+# GenieGuard v0.2
 
 GenieGuard is a pre-shipping CI loop for AI-generated game specs.
 It runs `Generate -> Self-Play Audit -> Auto Patch -> Regression Verify` with reproducible evidence artifacts.
@@ -134,6 +134,20 @@ Main files:
 - `result.json`
 - `evidence.zip`
 
+Verify `evidence.zip` integrity (manifest + sha256):
+
+```bash
+python -m genieguard.cli --verify-evidence artifacts/demo_latest/run_xxx/evidence.zip --json
+```
+  - includes `manifest.json` (`manifest_version=2`, sha256 list, runtime metadata)
+
+`result.json` contract (v0.2):
+- `schema_version` (currently `2`)
+- gate fields (`gate_passed`, `before_gate_passed`, `after_gate_passed`, `gate_thresholds`, `gate_reasons`)
+- metrics (`before_metrics`, `after_metrics`)
+- patch/attempts (`selected_patch`, `attempts`)
+- runtime meta in `meta` (`genieguard_version`, `git_sha`, `created_at`, `python_version`, `platform`)
+
 For one-click demo script output:
 - `artifacts/demo_latest/`
 
@@ -176,24 +190,30 @@ Generated in `dist/`:
 Create and publish a GitHub release (Windows):
 
 ```bash
-tools\release.bat v0.1.0
+tools\release.bat v0.2.0
 ```
 
 ## Project Layout
 ```
 src/genieguard/
+  artifacts.py
   audit.py
   cli.py
+  evidence.py
   models.py
+  gate.py
   patcher.py
   pipeline.py
   policies.py
   regression.py
   reporting.py
+  results.py
+  runtime.py
   selfplay.py
   simulator.py
   spec_gen.py
 docs/
   GenieGuard_v0.1.md
+  GenieGuard_v0.2.md
 tests/
 ```

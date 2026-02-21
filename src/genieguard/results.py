@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .runtime import RESULT_SCHEMA_VERSION
+
 
 @dataclass(frozen=True)
 class RunPaths:
@@ -38,11 +40,13 @@ class PipelineResult:
     paths: RunPaths
     meta: dict[str, Any]
     attempts: list[dict[str, Any]]
+    schema_version: int = RESULT_SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
         meta = payload["meta"]
         return {
+            "schema_version": payload["schema_version"],
             "gate_passed": payload["gate"]["gate_passed"],
             "before_gate_passed": payload["gate"]["before_gate_passed"],
             "after_gate_passed": payload["gate"]["after_gate_passed"],

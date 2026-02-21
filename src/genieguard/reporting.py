@@ -193,6 +193,7 @@ def _render_html(
     after_reasons: dict[str, dict[str, float]],
     worst_before: dict[str, Any],
     worst_after: dict[str, Any],
+    report_meta: dict[str, Any] | None = None,
 ) -> str:
     rows = []
     for key, value in compare.items():
@@ -208,6 +209,20 @@ def _render_html(
     policy_rows = _render_policy_rows(before, after)
     status = "PASS" if gate_passed else "SOFT-FAIL"
     status_color = "#14532d" if gate_passed else "#9a3412"
+    meta = report_meta or {}
+    gg_version = str(meta.get("genieguard_version", "unknown"))
+    schema_version = str(meta.get("schema_version", "unknown"))
+    git_sha = str(meta.get("git_sha", "unknown"))
+    created_at = str(meta.get("created_at", ""))
+    python_version = str(meta.get("python_version", ""))
+    platform_name = str(meta.get("platform", ""))
+    thresholds = meta.get("gate_thresholds", {})
+    if isinstance(thresholds, dict):
+        deadlock_max = float(thresholds.get("deadlock_rate_max", 0.01))
+        win_skew_max = float(thresholds.get("win_skew_max", 0.10))
+        exploit_max = float(thresholds.get("exploit_dominance_max", 0.25))
+    else:
+        deadlock_max, win_skew_max, exploit_max = 0.01, 0.10, 0.25
 
     return f"""<!doctype html>
 <html lang="ja">
@@ -263,11 +278,13 @@ def _render_html(
 <body>
   <div class="wrap">
     <div class="head">
-      <h1>GenieGuard v0.1</h1>
+      <h1>GenieGuard v{_html_escape(gg_version)}</h1>
       <div>Prompt: {_html_escape(prompt)}</div>
       <div>Regression Gate: <span class="status">{status}</span></div>
       <div class="muted">Metrics: deadlock_rate / win_skew / exploit_dominance</div>
-      <div class="muted">Thresholds: deadlock_rate &lt;= 0.01, win_skew &lt;= 0.10, exploit_dominance &lt;= 0.25</div>
+      <div class="muted">Thresholds: deadlock_rate &lt;= {deadlock_max:.2f}, win_skew &lt;= {win_skew_max:.2f}, exploit_dominance &lt;= {exploit_max:.2f}</div>
+      <div class="muted">Result schema_version={_html_escape(schema_version)} | git_sha={_html_escape(git_sha[:12] if git_sha != 'unknown' else git_sha)}</div>
+      <div class="muted">created_at={_html_escape(created_at)} | python={_html_escape(python_version)} | platform={_html_escape(platform_name)}</div>
     </div>
     <div class="grid">
       <section class="card">
@@ -328,6 +345,7 @@ def write_run_artifacts(
     report_before: AuditReport,
     regression: RegressionResult,
     write_html: bool = True,
+    report_meta: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     ensure_dir(out_dir)
     evidence_dir = out_dir / "evidence"
@@ -385,6 +403,7 @@ def write_run_artifacts(
             after_reasons=after_reasons,
             worst_before=worst_before,
             worst_after=worst_after,
+            report_meta=report_meta,
         )
         write_text(html_path, html)
 

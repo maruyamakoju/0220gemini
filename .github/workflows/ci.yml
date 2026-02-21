@@ -54,6 +54,12 @@ jobs:
           python run_demo.py --demo-case ${{ matrix.demo_case }} --max-attempts 2 --out artifacts/ci_run_${{ matrix.demo_case }} --json --fail-on-soft-fail > result_${{ matrix.demo_case }}.json
           cat result_${{ matrix.demo_case }}.json
 
+      - name: Verify evidence pack integrity
+        if: always()
+        continue-on-error: true
+        run: |
+          python -m genieguard.cli --verify-evidence artifacts/ci_run_${{ matrix.demo_case }}/evidence.zip --json
+
       - name: CI summary
         if: always()
         run: |
@@ -75,6 +81,11 @@ jobs:
               data = json.loads(result_path.read_text(encoding="utf-8"))
               passed = bool(data.get("gate_passed"))
               lines.append(f"- Gate: `{'PASS' if passed else 'SOFT-FAIL'}`")
+              lines.append(
+                  f"- Contract: schema_version={data.get('schema_version', 'n/a')}, "
+                  f"genieguard_version={data.get('meta', {}).get('genieguard_version', 'n/a')}, "
+                  f"git_sha={str(data.get('meta', {}).get('git_sha', 'n/a'))[:12]}"
+              )
               lines.append(
                   f"- before_gate_passed={data.get('before_gate_passed')} / after_gate_passed={data.get('after_gate_passed')}"
               )
@@ -128,6 +139,20 @@ jobs:
               raise SystemExit(1)
           data = json.loads(result_path.read_text(encoding="utf-8"))
           raise SystemExit(0 if data.get("gate_passed") else 1)
+          PY
+
+      - name: Enforce evidence integrity
+        if: always()
+        run: |
+          python - << 'PY'
+          from pathlib import Path
+          from genieguard.evidence import verify_evidence_zip
+
+          case_name = "${{ matrix.demo_case }}"
+          zip_path = Path(f"artifacts/ci_run_{case_name}/evidence.zip")
+          result = verify_evidence_zip(zip_path)
+          print(result)
+          raise SystemExit(0 if result.get("ok") else 1)
           PY
 
       - name: Upload artifacts

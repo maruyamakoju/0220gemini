@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genieguard"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pre-shipping CI for generated games: self-play audit, auto patch, regression verify."
 requires-python = ">=3.11"
 dependencies = []

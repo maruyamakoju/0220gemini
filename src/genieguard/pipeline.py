@@ -15,6 +15,7 @@ from .policies import default_policy_names
 from .regression import RegressionResult, check_reproducible, run_regression_gate
 from .reporting import write_run_artifacts
 from .results import GateInfo, PipelineResult, RunPaths
+from .runtime import RESULT_SCHEMA_VERSION, build_runtime_meta
 from .selfplay import run_self_play
 from .spec_gen import generate_gamespec
 
@@ -163,6 +164,11 @@ def persist_pipeline_result(outcome: PipelineCoreOutcome, config: PipelineConfig
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_dir = Path("artifacts") / f"run_{stamp}"
 
+    runtime_meta = build_runtime_meta()
+    report_meta = dict(runtime_meta)
+    report_meta["schema_version"] = RESULT_SCHEMA_VERSION
+    report_meta["gate_thresholds"] = outcome.gate_spec.thresholds_dict()
+
     paths = write_run_artifacts(
         out_dir=out_dir,
         prompt=outcome.prompt,
@@ -171,6 +177,7 @@ def persist_pipeline_result(outcome: PipelineCoreOutcome, config: PipelineConfig
         report_before=outcome.report_before,
         regression=outcome.regression,
         write_html=config.write_html,
+        report_meta=report_meta,
     )
 
     layout = ArtifactLayout(out_dir=out_dir)
@@ -214,12 +221,18 @@ def persist_pipeline_result(outcome: PipelineCoreOutcome, config: PipelineConfig
             "seeds": outcome.seeds,
             "reproducible_before": bool(outcome.report_before.reproducible),
             "reproducible_after": bool(outcome.regression.after_report.reproducible),
+            "genieguard_version": runtime_meta["genieguard_version"],
+            "git_sha": runtime_meta["git_sha"],
+            "created_at": runtime_meta["created_at"],
+            "python_version": runtime_meta["python_version"],
+            "platform": runtime_meta["platform"],
         },
         attempts=outcome.regression.attempts,
+        schema_version=RESULT_SCHEMA_VERSION,
     )
 
     write_json(layout.result_json, result.to_dict())
-    write_evidence_zip(layout)
+    write_evidence_zip(layout, runtime_meta=runtime_meta)
     return result
 
 

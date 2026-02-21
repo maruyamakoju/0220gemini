@@ -26,15 +26,32 @@ def test_pipeline_improves_default_spec(tmp_path: Path) -> None:
     before = result["before_metrics"]
     after = result["after_metrics"]
     assert result["gate_passed"] is True
+    assert result["schema_version"] == 2
+    assert "genieguard_version" in result["meta"]
+    assert "git_sha" in result["meta"]
+    assert "created_at" in result["meta"]
+    assert "python_version" in result["meta"]
+    assert "platform" in result["meta"]
     assert after["deadlock_rate"] <= before["deadlock_rate"]
     assert after["win_skew"] <= before["win_skew"]
     assert (out_dir / "report.html").exists()
     assert (out_dir / "result.json").exists()
     assert (out_dir / "evidence.zip").exists()
+    saved_result = json.loads((out_dir / "result.json").read_text(encoding="utf-8"))
+    assert saved_result["schema_version"] == 2
+    assert saved_result["meta"]["genieguard_version"] == result["meta"]["genieguard_version"]
     with zipfile.ZipFile(out_dir / "evidence.zip", "r") as zf:
         names = set(zf.namelist())
         assert "manifest.json" in names
         assert "result.json" in names
+        manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+        assert manifest["manifest_version"] == 2
+        assert "genieguard_version" in manifest
+        assert "git_sha" in manifest
+        assert "created_at" in manifest
+        assert "python_version" in manifest
+        assert "platform" in manifest
+        assert any(item["name"] == "result.json" for item in manifest["files"])
 
 
 def test_pipeline_short_circuit_pass_for_good_spec(tmp_path: Path) -> None:
